@@ -1,0 +1,127 @@
+import os 
+import json
+import openai
+import time
+from dotenv import load_dotenv
+from dotenv import find_dotenv
+from cassandra.cluster import Cluster
+from cassandra.cluster import PlainTextAuthProvider
+from astrapy import DataAPIClient
+from astrapy.constants import VectorMetric
+from langchain_community.chat_message_histories import CassandraChatMessageHistory
+from langchain.memory import ConversationBufferMemory
+from langchain_core.output_parsers import StrOutputParser
+from langchain_openai.chat_models import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
+
+dotenv_path=find_dotenv()
+
+load_dotenv(dotenv_path)
+
+API_ENDP=os.getenv("API_ENDP")
+
+API_TK=os.getenv("API_TK")
+
+SECURE_CONNECT_BUNDLE=os.getenv("SECURE_CONNECT_BUNDLE")
+
+cloud_config={
+    'secure_connect_bundle': SECURE_CONNECT_BUNDLE
+}
+with open("pedasinguteenu@gmail.com-token.json") as f:
+    secrets=json.load(f)
+
+Client_Id=secrets['clientId']
+Client_Secret=secrets["secret"]
+
+# #Client Initialise and Database Connection 
+# client = DataAPIClient(os.environ["API_TK"])
+# database = client.get_database(os.environ["API_ENDP"])
+# print(f"* Database: {database.info().name}\n")
+
+
+Auth_provider = PlainTextAuthProvider(
+    username=Client_Id, 
+    password=Client_Secret
+)
+cluster=Cluster(cloud=cloud_config,auth_provider=Auth_provider)
+session=cluster.connect()
+
+
+
+
+
+
+
+
+
+
+# cluster=Cluster(cloud=cloud_config,auth_provider=None)
+# session=cluster.connect()
+
+# Astra_DB_keyspace="default_keyspace"
+OpenAI_APIKEY="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"
+
+# message_history=CassandraChatMessageHistory(
+#     session_id="anything",
+#     session=session,
+#     keyspace=Astra_DB_keyspace,
+#     ttl_seconds=3600
+# )
+
+# message_history.clear()
+
+# cass_buff_memory=ConversationBufferMemory(
+#     memory_key="chat_history",
+#     chat_memory=message_history
+# )
+# template="""
+# Curate Creative and Narrative Experiences for the user by interactive storytelling 
+# Here are some rules to follow:
+# 1.After generation of a simple monologue with a introduction for the user
+# 2.Ask the User for what he want to Do or Speak in the Scenario
+# 3.Keep Generating Story from previous scenarios and Progress from there
+
+# Here is the chat history, use this to understand on what to say next: {chat_history}
+# Human: {human_input}
+# AI:"""
+
+
+# prompt=PromptTemplate(
+#     input_variables=["chat_history","human_input"],
+#     template=template
+# )
+
+
+llm = ChatOpenAI(
+    model="gpt-3.5-turbo",
+    api_key=OpenAI_APIKEY
+)
+
+def get_joke_with_retry():
+    retries = 5  # Maximum number of retries
+    for attempt in range(retries):
+        try:
+            response = llm.invoke("Tell me a Joke")
+            return response
+        except openai.error.RateLimitError as e:
+            print(f"Rate limit exceeded. Retrying in {2 ** attempt} seconds...")
+            time.sleep(2 ** attempt)  # Exponential backoff
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            break
+    return None  # Return None if all retries fail
+
+response = get_joke_with_retry()
+if response:
+    print(response)
+else:
+    print("Failed to get a response after multiple retries.")
+
+# llm_chain=LLMChain(
+#     llM=llm,
+#     prompt="prompt",
+#     memory=cass_buff_memory
+# )
+
+# response=llm_chain.predict(human_input="start the game")
+# print(response)
